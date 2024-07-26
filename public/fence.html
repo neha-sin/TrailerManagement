@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MQTT GeoFence Demo WebApp</title>
+  <link rel="shortcut icon" type="image/png" href="favicon.png"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
+  <style>
+    p {
+      margin: 0px;
+      font-family: "Lucida Console", "Inconsolata", monospace;
+      font-size:100%;
+      /*color: #00A8F3;*/
+      color: #00c895;
+    }
+    h2 {
+      margin: 0px;
+      font-family: Arial, sans-serif;
+      /*color: #00A8F3;*/
+      color: #00c895;
+    }
+    hr {
+      /*border-color: #00A8F3;*/
+      border-color: #00c895;
+    }
+    #div_tl {
+      position: absolute;
+      top: 0px;
+      right: 0px;
+      z-index: 99;
+      background-color: rgba(255, 255, 255, 0);
+      padding: 10px;
+    }
+    .button {
+      /*background-color: #00A8F3;*/
+      background-color: #00c895;
+      border: none;
+      color: #333333;
+      padding: 5px 30px;
+      text-align: center;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body style="background-color: #333333">
+<div id="div_tl">
+  <button id="hints" class="button" onClick="alert('For only ENTER events, change URL to:\n https://dev.d1l2z2zahhoam4.amplifyapp.com/fence.html?fenceUID={uid}/enter\nFor only route 7 events, change URL to:\n https://dev.d1l2z2zahhoam4.amplifyapp.com/fence.html?fenceUID=+/+/007+');">Hints</button>
+  <button id="pause" class="button" onClick="pause();">Pause</button>
+</div>
+<h2>MQTT GeoFence Demo Client App</h2>
+<br/>
+<script>
+var fenceQuery = window.location.search.split('=');
+var fenceUid;
+if(fenceQuery.length == 2) {
+  fenceUid = fenceQuery[1];
+  console.log(fenceUid);
+} else {
+  // not what we are expecting
+  console.log('Incorrect Url String');
+}
+//   var fenceUid = window.location.search.split(1);  // grab all the chars at the end of the URL after the '?', then check it
+// console.log(fenceUid);
+//   const linkRegex = /^[0-9a-z]{4}$/;  // should be one server index, and then 4 chars
+//   //if (!linkRegex.test(fenceUid)) return;  // not what I'm expecting
+//   console.log(linkRegex.test(fenceUid));  // not what I'm expecting
+
+
+  // TODO - UPDATE CREDENTIALS, HOSTS, PORT, TOPIC BELOW!!
+  const LINES_TO_SHOW = 10;
+  var isPaused = false;
+//  var host = "taxi.messaging.solace.cloud";
+//  var port = 8443;
+//  var username = "public-taxi";
+//  var password = "iliketaxis";
+  var host = "mr-connection-91wvb441n4d.messaging.solace.cloud";
+  var port = 8443;
+  var username = "chs-demo-fence";
+  var password = "chs_demo";
+  var useSSL = true; 
+  var client_id = ""+(Math.random() + 1).toString(36).substring(2,10);  // 8 "random" [0-9a-z]
+  client = new Paho.MQTT.Client(host,Number(port),client_id);
+
+  // set callback handlers
+  client.onConnectionLost = onConnectionLost;
+  client.onMessageArrived = onMessageArrived;
+
+  // connect the client
+  connectOptions = { };
+  connectOptions["useSSL"] = useSSL;
+  connectOptions["userName"] = username;
+  connectOptions["password"] = password;
+  connectOptions["onSuccess"] = onConnect;
+  writeToScreen("Connecting to PubSub+ ...");
+  client.connect(connectOptions);
+ 
+  // called when the client connects
+  function onConnect() {
+    writeToScreen("Connected.");
+    //client.subscribe("$SYS/client/client-name");  // find out this Solace MQTT client's name
+    client.subscribe("geo/fence/"+fenceUid+"/#");  // find out this Solace MQTT client's name
+    writeToScreen("Subscribed to MQTT topic: <b>geo/fence/"+fenceUid+"/#</b>");
+    writeToScreen("&nbsp;");
+  }
+
+  // called when the client loses its connection
+  function onConnectionLost(responseObject) {
+    if (responseObject.errorCode !== 0) {
+      writeToScreen("onConnectionLost: "+responseObject.errorMessage);
+    } else {
+      writeToScreen("Disconnected.");
+    }
+  }
+
+  // called when a message arrives
+  function onMessageArrived(message) {
+    if (!isPaused && message.payloadString.length > 1) {
+      // only write to the screen if we're not paused; otherwise, throw away
+      //writeToScreen("<b>onMessageArrived:</b> topic='"+message.destinationName+"',&nbsp; payload='"+message.payloadString+"'");
+      var payload = JSON.parse(message.payloadString);
+      var vehicleNum = payload.vehicleNum ? payload.vehicleNum : payload.vehicleNum;
+      var screenMsg;
+      if (payload.fenceStatus == 'enter') screenMsg = "<b>&gt;&gt;&gt; Vehicle #" + vehicleNum + " ENTERING: "+message.destinationName+"</b> "+message.payloadString;
+      else if (payload.fenceStatus == 'exit') screenMsg = "<b>Vehicle #" + vehicleNum + " exiting: &lt;&lt&lt;&nbsp; "+message.destinationName+"</b>&nbsp; "+message.payloadString;
+      writeToScreen(screenMsg);
+    }
+  }
+
+ 
+  // write to screen
+  function writeToScreen(str) {
+    var node = document.createElement("p");
+    node.innerHTML = str;
+    document.body.appendChild(node);
+    // do we need to trim the list?
+    var paragraphList = document.body.getElementsByTagName("p");
+    if (paragraphList.length > LINES_TO_SHOW) {
+      document.body.removeChild(paragraphList[0]);
+    }
+  }
+  
+  function pause() {
+    if (isPaused) {
+      //writeToScreen('...unpaused.'); 
+      isPaused = false;
+      document.getElementById('pause').innerHTML = 'Pause';
+    } else {
+      writeToScreen('Pausing...'); 
+      isPaused = true;
+      document.getElementById('pause').innerHTML = 'Unpause';
+    }
+  }
+
+</script>
+</body>
+</html>

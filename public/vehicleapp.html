@@ -1,0 +1,309 @@
+
+<!DOCTYPE html>
+<html xmlns="">
+<head>
+    <title>Vehicle Command and Control</title>
+  <link rel="shortcut icon" type="image/png" href="favicon.png" />
+    <meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- style -->
+	<link rel="stylesheet"  href="./css/jquery.mobile-1.1.0.css" />
+	<link rel="stylesheet"  href="./css/styles.css" />
+    <!-- jquery ui -->
+ 	<script src="./lib/jquery.js"></script>
+	<script src="./lib/jquery.mobile-1.1.0.js"></script>
+
+	
+    <!-- solclientjs -->
+    <script type="text/javascript" src="./lib/solclient-full.js"></script>
+
+    <!-- business logic -->
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+    <script type="text/javascript" src="./lib/solPubSubHelper.js"></script>
+    <script type="text/javascript" src="./lib/solUIHelper.js"></script>
+
+	<script type="text/javascript">
+        
+        google.charts.load('current', {'packages':['gauge']});
+      google.charts.setOnLoadCallback(drawChart);
+        var data;
+        var chart;
+        var options;
+      function drawChart() {
+
+         data = google.visualization.arrayToDataTable([
+          ['Label', 'Value'],
+          ['Speed', 0],
+        
+        ]);
+
+         options = {
+          width: 400, height: 120,
+          redFrom: 80, redTo: 100,
+          yellowFrom:55, yellowTo: 80,
+          minorTicks: 5
+        };
+
+        chart = new google.visualization.Gauge(document.getElementById('chart_div'));
+
+        chart.draw(data, options);
+          
+        /*
+        setInterval(function() {
+          data.setValue(0, 1, 40 + Math.round(60 * Math.random()));
+          chart.draw(data, options);
+        }, 13000);
+        setInterval(function() {
+          data.setValue(1, 1, 40 + Math.round(60 * Math.random()));
+          chart.draw(data, options);
+        }, 5000);
+        setInterval(function() {
+          data.setValue(2, 1, 60 + Math.round(20 * Math.random()));
+          chart.draw(data, options);
+        }, 26000);
+        */
+      }
+
+        
+		$.support.cors = true;
+		$.mobile.allowCrossDomainPages = true;
+		
+		$('#home').live('pagebeforecreate',function(event){
+			//connectSession();
+
+		 });    
+
+		$('#allflights').live('pagebeforeshow',function(event){
+			//alert("in allflights");
+			addSubscription("mdd/sec/top20vol/>");
+
+		 });
+		 $('#allflights').live('pagebeforehide',function(event){
+			//alert("in allflights before hide");
+			removeSubscription("mdd/sec/top20vol/>");
+
+		 }); 
+		 
+
+		 		  
+		$( function() {
+
+		  document.addEventListener("deviceready", onDeviceReady, false);
+
+		} );
+
+		$(document).ready(function() {
+		 
+		  	$('#btnConnect').button().click(function(){
+		  		var my_web_server_url = $("#txtUrl").val();
+		  		var my_vpn = $("#txtVPN").val();
+		  		var my_client_username = $("#txtUserName").val();
+		  		var my_password = $("#txtPassword").val();
+		  		connectSession(my_web_server_url, my_vpn, my_client_username, my_password);
+           		
+         	});
+            
+
+         				
+		  	$('#btnStart').button().click(function(){
+if (!connectedFlag) return;
+		  		var busNo = $("#txtBusNo").val();
+		  		//var routeNo = $("#txtRouteNo").val();
+                var topic = "vehicle_trak/ctrl/vehicle/"+busNo+"/start";
+		  		//var topic = "comms/"+routeNo+"/"+busNo+"/dispatch/start";           		
+                //alert("Starting Bus: " + topic);
+                $("#busgo").removeClass('hidden');
+				$("#busstop").addClass('hidden');
+                sendClickMessage(topic, "Starting the vehicle! Vrooooom!");
+         	});
+            
+		  	$('#btnStop').button().click(function(){
+if (!connectedFlag) return;
+		  		var busNo = $("#txtBusNo").val();
+		  		//var routeNo = $("#txtRouteNo").val();
+		  		var topic = "vehicle_trak/ctrl/vehicle/"+busNo+"/stop";        		
+                //alert("Starting Bus: " + topic);
+                
+				$("#busstop").removeClass('hidden');
+				$("#busgo").addClass('hidden');
+                sendClickMessage(topic, "Stopping the vehicle! Krzzzzz!");
+         	});  
+            
+		  	$('#btnWhoAmI').button().click(function(){
+if (!connectedFlag) return;
+		  		var busNo = $("#txtBusNo").val();
+		  		//var routeNo = $("#txtRouteNo").val();
+                var topic = "vehicle_trak/comms/vehicle/"+busNo;
+		  		//var topic = "comms/"+routeNo+"/"+busNo+"/dispatch/whoami";           		
+                //alert("Starting Bus: " + topic);
+                
+                //sendClickMessage(topic, "Who Am I? Identity crisis!");
+                sendClickMessage(topic, "Here I am! vehicle "+busNo);
+         	});  
+
+		  	$('#btnFixMe').button().click(function(){
+		  		var busNo = $("#txtBusNo").val();
+		  		//var routeNo = $("#txtRouteNo").val();
+		  		var topic = "vehicle_trak/ctrl/vehicle/"+busNo+"/fix";           		
+                //alert("Starting Bus: " + topic);
+                
+                sendClickMessage(topic, "Fix Me! Happy Days :-)");
+         	});
+            
+		  	$('#btnFlatTyre').button().click(function(){
+		  		var busNo = $("#txtBusNo").val();
+		  		//var routeNo = $("#txtRouteNo").val();
+		  		var topic = "vehicle_trak/ctrl/vehicle/"+busNo+"/flat";            		
+                //alert("Starting Bus: " + topic);
+                
+                sendClickMessage(topic, "Flat Tyre! What a waste of time!");
+         	});  
+            
+		  	$('#btnCrash').button().click(function(){
+		  		var busNo = $("#txtBusNo").val();
+		  		//var routeNo = $("#txtRouteNo").val();
+		  		var topic = "vehicle_trak/ctrl/vehicle/"+busNo+"/crash";         		
+                //alert("Starting Bus: " + topic);
+                
+                sendClickMessage(topic, "Engine Trouble!! Use proper engine oil!");
+         	});  
+            
+         });
+
+		// PhoneGap is loaded and it is now safe to make calls PhoneGap methods
+		//
+		function onDeviceReady() {
+			//alert("on Device ready called");
+			//connectSession();
+			
+			
+		}
+	</script>  
+
+</head>
+
+<body>
+
+<div data-role="page" id="home" data-theme="a" >
+
+	<div data-role="header" class="header" data-theme="a">
+			Vehicle Demo <br>Command and Control
+
+	</div>
+	
+	<div data-role="content" data-theme="a">
+	
+		<div>
+			<div class="center">
+    			
+
+                <table id="tab_addsub" class="mddTableGrid">
+                    
+					<tr>
+						<td width="75%" colspan="2">
+                               <img class="solaceGreenBorder" src="./images/sub-chs-Transportation.jpg" height="200px"/>
+                        </td>
+                        <td width="%" colspan="2">
+                            <div id="onoff" class="onoffRed"></div>
+                            Vehicle No:
+                            <input type="text" name="txtBusNo" id="txtBusNo" value="1024" data-mini="true">
+			    <script>document.getElementById('txtBusNo').value = ""+(1000 + Math.floor(Math.random()*500)); </script>
+                          <!--  
+                            Route No:
+			    <input type="text" name="txtRouteNo" id="txtRouteNo" value="1" data-mini="true"> -->
+                            <br/>
+                            <input type="button" data-image="./images/connect.jpeg" data-icon="arrow" data-iconpos="right" data-mini="false" value="Connect" id="btnConnect">
+                            
+                        
+                        </td>
+                    </tr>
+				</table>
+				
+                
+                <table id="tab_addsub" class="mddTableGrid">
+
+					<tr>
+						<td width="70%" class="solaceGreenBorder">Notifications:<br><br>
+                            <div id="divNotifications" class="overflowHide">-</div>
+                        </td>
+                        <td width="30%" >
+                            <div id="busstop" class="center" style="zoom:.4">
+                                <img src="./images/red_traffic-v2.png">
+                            </div>
+							<div id="busgo" class="center hidden" style="zoom:.4">
+                                <img src="./images/green_traffic-v2.png">
+                            </div>
+
+                        </td>                        
+                    </tr>
+				</table>
+			
+            </div>
+
+			<div class="center">
+				<table id="tab_addsub" class="mddTableGrid">
+					
+					<tr>
+						<td width="70%" class="solaceGreenBorder">Status:<br><br>
+                            <div id="divStatus">-</div>
+                            
+                        </td>
+                        <td width="30%" >
+                            <div id="chart_div" class="center" style="width: 120px; height: 120px;"></div>
+
+                        </td>
+					</tr>                    
+				</table>
+					
+            </div>
+            
+			<div class="center">
+				<table id="tab_addsub" class="mddTableGrid">
+					<tr>
+						<td width="33.34%"><input type="button" data-icon="info" data-iconpos="right" data-mini="false" value="Where Am I?" id="btnWhoAmI"></td>
+	 		 		  	<!--td width="50%"><input type="button" data-icon="plus" data-iconpos="right" data-mini="false" value="Fix Me!" id="btnFixMe"></td>
+					</tr>	
+					<tr-->
+	 		 		  	<td width="33.33%"><input type="button" data-icon="arrow-d" data-iconpos="right" data-mini="false" value="Stop Vehicle" id="btnStop"></td>
+						<td width="33.33%"><input type="button" data-icon="arrow-u" data-iconpos="right" data-mini="false" value="Start Vehicle" id="btnStart"></td>
+					</tr>	                    <!--tr>
+						<td width="50%"><input type="button" data-icon="alert" data-iconpos="right" data-mini="false" value="Flat Tyre" id="btnFlatTyre"></td>
+	 		 		  	<td width="50%"><input type="button" data-icon="delete" data-iconpos="right" data-mini="false" value="Engine Overheat" id="btnCrash"></td>
+					</tr-->				
+				</table>
+			
+			
+            </div>
+		</div>
+		<div class="invisible"> 
+		<b>Connectivity Details:</b><br>
+
+    
+        <!-- This is pointing to Aaron's Bus Demo SC instance -->
+		<input type="text" name="txtUrl" id="txtUrl" value="wss://neha.messaging.solace.cloud:443" data-mini="true"><br>
+		<input type="text" name="txtUserName" id="txtUserName" value="default" data-mini="true"><br>
+		<input type="text" name="txtPassword" id="txtPassword" value="default" data-mini="true"><br>
+		<input type="text" name="txtVPN" id="txtVPN" value="neha" data-mini="true"><br>
+
+        <!--input type="text" name="txtUrl" id="txtUrl" value="http://sgdemo1.solace.com" data-mini="true"><br>
+        <input type="text" name="txtUserName" id="txtUserName" value="geoclient" data-mini="true"><br>
+        <input type="text" name="txtPassword" id="txtPassword" value="password" data-mini="true"><br>
+        <input type="text" name="txtVPN" id="txtVPN" value="geo-routing-demo" data-mini="true"><br-->
+ 
+		<!--input type="button" data-icon="cloud" data-iconpos="right" data-mini="true" value="Connect" id="btnConnect"-->
+
+		
+		</div>
+	</div>
+
+</div>
+
+</body>
+
+</html>
+
+
+
+
